@@ -1,0 +1,72 @@
+---
+title: "Anomaly Detection"
+output: html_notebook
+---
+
+```{r}
+library(haven)
+library(OutlierDetection)
+library(purrr)
+library(data.table)
+
+x14_17 <- read_csv("N:\\CommDev\\Research\\Research\\Parks_Regional\\Use Estimates\\raw_counts\\2014-2017 Data.csv")
+
+single_obs <- x14_17 %>%
+  group_by(Park, agency) %>%
+  count() %>%
+  filter(n == 1) %>%
+  unite(Park_Agency, Park, agency)
+
+df_split <- x14_17 %>%
+  select(-half, -expfact, -new2008ppv, -newppb, -`day#s`, -carpeop, -buspeop, -totalsum, -samclass, -totalall) %>%
+  separate(gooddate, into = c("Month", "Day"), sep = 1) %>%
+  select(-Day) %>%
+  mutate(May = ifelse(Month == 5, 1, 0),
+         June = ifelse(Month == 6, 1, 0),
+         July = ifelse(Month == 7, 1, 0),
+         Aug = ifelse(Month == 8, 1, 0),
+         Sep = ifelse(Month == 9, 1, 0)) %>%
+  select(-Month) %>%
+  mutate(Start_8 = ifelse(orgstart == 800, 1, 0),
+         Start_10 = ifelse(orgstart == 1000, 1, 0),
+         Start_12 = ifelse(orgstart == 1200, 1, 0),
+         Start_14 = ifelse(orgstart == 1400, 1, 0),
+         Start_16 = ifelse(orgstart == 1600, 1, 0),
+         Start_18 = ifelse(orgstart == 1800, 1, 0)) %>%
+  select(-orgstart) %>%
+  mutate(Weekday = ifelse(daytype == 1, 1, 0),
+         Weekend = ifelse(daytype == 2, 1, 0)) %>%
+  select(-daytype) %>%
+  unite(Park_Agency, Park, agency) %>%
+  filter(Park_Agency != "63_6") %>%
+  split(.$Park_Agency) %>%
+  map(~ nn(.))
+
+anomalies <- vector("list", length(df_split))
+
+for (i in 1:length(df_split)) {
+  anomalies[[i]] <- df_split[[i]][[1]]
+}
+
+anomalies_df <- rbindlist(anomalies)
+
+
+  
+```
+
+```{r}
+# Take a quick look at temporal trends
+x14_17 %>%
+  filter(Park == 43) %>%
+  arrange(Year, gooddate, orgstart) %>%
+  mutate(Tot_visitors = rowSums(select(., Biker, Pedskat, Vehicle, Bus, Horse, Boat))) %>%
+  ggplot(aes(gooddate, Tot_visitors)) +
+  geom_line()
+```
+
+
+```{r}
+
+dataset = read.spss("C:\\PathToFile\\MyDataFile.sav", to.data.frame=TRUE)
+
+```
